@@ -11,7 +11,7 @@ import SwiftUI
 struct FormKit_DemoApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            HomeView()
         }
     }
 }

@@ -5,13 +5,17 @@
 //  Created by Mohsin Khan on 03/04/25.
 //
 
-import SwiftUI
+import Foundation
+import Combine
+
+import Foundation
 import Combine
 
 @MainActor
 public final class FormField<Value>: ObservableObject {
     @Published public var value: Value
     @Published public private(set) var error: String?
+    @Published public private(set) var touched: Bool = false
 
     private let validators: [Validator<Value>]
     private var cancellables = Set<AnyCancellable>()
@@ -20,30 +24,36 @@ public final class FormField<Value>: ObservableObject {
         self.value = value
         self.validators = validators
 
-        // ✅ Automatically validate on value change (safely)
+        // 👇 Validate on every value change
         $value
-            .removeDuplicates(by: { "\($0)" == "\($1)" })
+            .dropFirst() // ⛔ Prevent error on app launch
             .sink { [weak self] _ in
-                DispatchQueue.main.async {
-                    self?.validate()
+                guard let self else { return }
+                if !self.touched {
+                    self.touched = true
                 }
+                self.validate()
             }
             .store(in: &cancellables)
     }
 
     public func validate() {
-        print("Validating: \(value)")
         let newError = validators
             .compactMap { $0.validate(value) }
             .first
 
-        if newError != error {
-            error = newError
-        }
+        error = newError // always assign — trigger reactivity
     }
 
     public var isValid: Bool {
-        validate()
-        return error == nil
+        error == nil
+    }
+
+    public func markTouched() {
+        if !touched {
+            touched = true
+            validate()
+        }
     }
 }
+
